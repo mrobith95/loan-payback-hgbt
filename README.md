@@ -3,4 +3,4 @@ Basic ML-based loan payback prediction. Originally a kaggle notebook for kaggle 
 
 The [jupyter notebook](https://github.com/mrobith95/loan-payback-hgbt/blob/main/loan_payback_pred.ipynb) mainly focuses on in-depth modelling including feature selection and hyperparameter tuning, while also perform basic analysis routine such as data wrangling and ordinal encoding.
 
-The rest of files (except gitignore and this readme) used for [prediction web-app](https://huggingface.co/spaces/mrobith95/mr-lpb-0511). The metadata of this web-app can be seen [here.](https://huggingface.co/spaces/mrobith95/mr-lpb-0511/blob/main/README.md)
+The rest of files (except gitignore, licence and this readme) used for [prediction web-app](https://huggingface.co/spaces/mrobith95/mr-lpb-0511). The metadata of this web-app can be seen [here.](https://huggingface.co/spaces/mrobith95/mr-lpb-0511/blob/main/README.md)
