@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from joblib import load
 import gradio as gr
+import shap
 
 ## versions
 # numpy 1.26.4
@@ -9,8 +10,18 @@ import gradio as gr
 # joblib 1.5.2
 # gradio 5.38.1 
 
+## functions for shap
+def predict_log_proba(z):
+    p = model.predict_proba(z)
+    return np.log(p[:,1] / p[:,0])
+
+def predict_proba(z):
+    p = model.predict_proba(z)
+    return p[:,1]
+
 model = load('best_model.joblib')
 enc = load('encoder.joblib')
+explainer = load('explainer.joblib')
 # ## additionals
 # categoricals = load('/kaggle/input/best-model-v2/scikitlearn/default/1/categoricals.joblib')
 # features = load('/kaggle/input/best-model-v2/scikitlearn/default/1/features.joblib')
@@ -80,8 +91,34 @@ def do_this(ai, debt, lo, g, ms, el, es, lp):
     pred_p = model.predict_proba(masuk_pd)[:,1]
 
     pred_pd = f"{100*float(pred_p[0]):.2f}%"
+
+    ## shap values
+    shap_values = explainer(masuk_pd)
+
+    ## give rejection message
+    rej_mes = ""
+    if pred_p[0]<0.5: ## this meant that application rejected
+        ## debt-to-income ratio
+        if shap_values.values[0][1]<0 and shap_values.data[0][1]>=0.2:
+            rej_mes += "Your current debt is too high. Pay some of your debt first, or try to have more income.\n"
+        elif shap_values.values[0][1]<0 and shap_values.data[0][1]<0.2:
+            rej_mes += "Your current debt is too high for this application. Pay some of your debt first, or try to have more income.\n"
+            
+        ## credit-score
+        if shap_values.values[0][2]<0:
+            rej_mes += "Your credit score is too low for this application. Consider looking for more lenient lending services and pay your credit in time to improve your score.\n"
+        
+        ## loan-amount
+        if shap_values.data[0][3]>38000:
+            rej_mes += "Loan amount you propose is too high. Consider lowering your loan amount.\n"
+
+        ## deafult text
+        if len(rej_mes)==0:
+            rej_mes = "Sorry, we have no suggestion on how to improve your application."
+    else:
+        rej_mes = "Congratulations! Your application has a good chance to be accepted!"
     
-    return pred_text, pred_pd
+    return pred_text, pred_pd, rej_mes
 
 with gr.Blocks() as demo:
     gr.Markdown(
@@ -104,12 +141,13 @@ with gr.Blocks() as demo:
     tombol = gr.Button(value='Submit', variant='primary')
     outputs=[
         gr.Textbox(max_lines=1, label='Prediction', show_label=True),
-        gr.Textbox(max_lines=1, label='Acceptance Probability', show_label=True)
+        gr.Textbox(max_lines=1, label='Acceptance Probability', show_label=True),
+        gr.Textbox(max_lines=6, label='Message', show_label=True)
         ]
     tombol.click(do_this, inputs, outputs)
     gr.Markdown(
     """
-    *Notes and Assumptions:<br>
+    **Notes and Assumptions:**<br>
     Here we assume that you are a new applicant to a lending company, although you may have debt in other company as well. Thus, several informations required to do prediction that typically not known to you are set to a constant value. These informations are, but not limited to: Credit Score, Interest Rate, and your Grade.
     """
     )
