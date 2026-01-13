@@ -48,18 +48,36 @@ pdf_path = 'SHAP_scatter_plot.pdf'
 api_key = os.getenv("GEMINI_KEY")
 client = genai.Client(api_key=api_key) ## initailize client
 
-print("Uploading file...")
-uploaded_file = client.files.upload(file=pdf_path)
+# print("Uploading file...")
+# uploaded_file = client.files.upload(file=pdf_path)
 
-while uploaded_file.state.name == "PROCESSING":
-    print(".", end="", flush=True)
-    time.sleep(2)
-    uploaded_file = client.files.get(name=uploaded_file.name)
+# while uploaded_file.state.name == "PROCESSING":
+#     print(".", end="", flush=True)
+#     time.sleep(2)
+#     uploaded_file = client.files.get(name=uploaded_file.name)
 
-if uploaded_file.state.name == "FAILED":
-    raise Exception("File processing failed.")
+# if uploaded_file.state.name == "FAILED":
+#     raise Exception("File processing failed.")
 
-print("\nFile ready!")
+# print("\nFile ready!")
+
+def get_or_upload_file(file_path, display_name):
+    # 1. Search for an existing active file with this display name
+    for f in client.files.list():
+        if f.display_name == display_name and f.state.name == "ACTIVE":
+            print(f"Found existing active file: {f.name}")
+            return f
+
+    # 2. If not found or not active, upload a new one
+    print(f"File '{display_name}' not found or expired. Uploading...")
+    new_file = client.files.upload(file=file_path, config={'display_name': display_name})
+    
+    # 3. Wait for it to move from PROCESSING to ACTIVE
+    while new_file.state.name == "PROCESSING":
+        time.sleep(2)
+        new_file = client.files.get(name=new_file.name)
+        
+    return new_file
 
 
 ## notes on input
@@ -133,6 +151,8 @@ def do_this(ai, debt, lo, g, ms, el, es, lp):
         shap_values = explainer(masuk_pd)
 
         print(shap_values)
+
+        uploaded_file = get_or_upload_file(pdf_path, "knowledge_base_lpb_0511")
 
         prom = f'''
         Explain why my loan application has low chance to be accepted.
